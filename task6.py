@@ -1,83 +1,88 @@
-def greedy_algorithm(stravy, suma):
-    dict_key_and_ratio = {}
-    # Порахуємо відношення калорій до вартості для страв та додамо в словник
-    for key, value in stravy.items():
-        ratio = 0
-        for inner_key, inner_value in value.items():
-            if ratio == 0:
-                ratio = inner_value
+def greedy_algorithm(items, budget):
+    # Сортуємо страви за співвідношенням калорій до вартості у спадаючому порядку
+    sorted_items = sorted(
+        items.items(), key=lambda x: x[1]["calories"] / x[1]["cost"], reverse=True
+    )
+
+    selected_items = []
+    total_cost = 0
+    total_calories = 0
+
+    for item_name, item_info in sorted_items:
+        if total_cost + item_info["cost"] <= budget:
+            selected_items.append(item_name)
+            total_cost += item_info["cost"]
+            total_calories += item_info["calories"]
+
+    return {
+        "selected_items": selected_items,
+        "total_cost": total_cost,
+        "total_calories": total_calories,
+    }
+
+
+def dynamic_programming(items, budget):
+    num_items = len(items)
+    dp_table = [[0] * (budget + 1) for _ in range(num_items + 1)]
+
+    for i in range(1, num_items + 1):
+        for j in range(budget + 1):
+            current_item = items[list(items.keys())[i - 1]]
+
+            if current_item["cost"] > j:
+                dp_table[i][j] = dp_table[i - 1][j]
             else:
-                # Та створимо словник з цими даними
-                ratio = inner_value/ratio
-                dict_key_and_ratio[key] = ratio
-                ratio = 0
-    # Зробимо сортування за спаданням по співвідношенню калорій до вартості
-    list_sorted_ratio = sorted(dict_key_and_ratio.items(), key=lambda x: x[1],
-                               reverse=True)
-    dict_sorted_ratio = dict(list_sorted_ratio)
-    # Роздрукуємо найменування страв з їх пріорітетами по співвідношенню
-    print("Страви відсортовані за співвідношенням калорійності та ціні",
-          dict_sorted_ratio)
-    # Відберемо страви жадібним алгоритмом за відношенням калорій до вартості
-    spysok_strav = {}
-    for key, value in dict_sorted_ratio.items():
-        current_strava = stravy[key]
-        cost = current_strava.get("cost")
-        count = suma // cost
-        if count > 0:
-            spysok_strav[key] = count
-        suma = suma - cost*count
+                dp_table[i][j] = max(
+                    dp_table[i - 1][j],
+                    dp_table[i - 1][j - current_item["cost"]]
+                    + current_item["calories"],
+                )
 
-    return spysok_strav
+    selected_items = []
+    i, j = num_items, budget
 
+    while i > 0 and j > 0:
+        if dp_table[i][j] != dp_table[i - 1][j]:
+            selected_items.append(list(items.keys())[i - 1])
+            j -= items[list(items.keys())[i - 1]]["cost"]
+        i -= 1
 
-def dynamic_programming(stravy, suma):
-    dict_key_and_kkal = {}
-    # Зробимо словник з сортуванням страв за калорійністю
-    for key, value in stravy.items():
-        ratio = 0
-        for inner_key, inner_value in value.items():
-            if ratio == 0:
-                ratio = 1
-            else:
-                dict_key_and_kkal[key] = inner_value
-                ratio = 0
-    # Зробимо сортування за спаданням калорійності
-    list_sorted_kkal = sorted(dict_key_and_kkal.items(), key=lambda x: x[1],
-                              reverse=True)
-    dict_sorted_kkal = dict(list_sorted_kkal)
-    # Роздрукуємо найменування страв за їх калорійністю
-    print("Страви відсортовані за калорійністю", dict_sorted_kkal)
-    # Відберемо страви алгоритмом динамічного програмування
-    spysok_strav = {}
-    min_strav_req = [0] + [float("inf")] * suma
-    last_strava_usage = [0] * (suma + 1)
-    for s in range(1, suma + 1):
-        for key, value in dict_sorted_kkal.items():
-            current_strava = stravy[key]
-            cost = current_strava.get("cost")
-            if s >= cost and min_strav_req[s - cost] + 1 < min_strav_req[s]:
-                min_strav_req[s] = min_strav_req[s - suma] + 1
-                last_strava_usage[s] = cost
-    current_sum = suma
-    while current_sum > 0:
-        spysok_strav[key] = spysok_strav.get(key, 0) + 1
-        current_sum = current_sum - cost
-    return spysok_strav
+    selected_items.reverse()
+    total_cost = sum(items[item]["cost"] for item in selected_items)
+    total_calories = sum(items[item]["calories"] for item in selected_items)
+
+    return {
+        "selected_items": selected_items,
+        "total_cost": total_cost,
+        "total_calories": total_calories,
+    }
 
 
-if __name__ == "__main__":
+def main():
     items = {
         "pizza": {"cost": 50, "calories": 300},
         "hamburger": {"cost": 40, "calories": 250},
         "hot-dog": {"cost": 30, "calories": 200},
         "pepsi": {"cost": 10, "calories": 100},
         "cola": {"cost": 15, "calories": 220},
-        "potato": {"cost": 25, "calories": 350}
-        }
-    total_cost = 80
+        "potato": {"cost": 25, "calories": 350},
+    }
 
-    print("Страви і їх кількість при використанні жадібного алгоритму",
-          greedy_algorithm(items, total_cost))
-    print("Страви і їх кількість при використанні динамічного програмування",
-          dynamic_programming(items, total_cost))
+    budget = 100
+
+    greedy_result = greedy_algorithm(items, budget)
+    dynamic_result = dynamic_programming(items, budget)
+
+    print("Жадібний алгоритм:")
+    print("Обрані страви:", greedy_result["selected_items"])
+    print("Всього застрат:", greedy_result["total_cost"])
+    print("Всього калорій:", greedy_result["total_calories"])
+    print()
+    print("Динамічное програмування:")
+    print("Обрані страви:", dynamic_result["selected_items"])
+    print("Всього застрат:", dynamic_result["total_cost"])
+    print("Всього калорій:", dynamic_result["total_calories"])
+
+
+if __name__ == "__main__":
+    main()
